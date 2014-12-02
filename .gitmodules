@@ -1,0 +1,6 @@
+[submodule "lib/ProPPR"]
+	path = lib/ProPPR
+	url = git@github.com:TeamCohen/ProPPR.git
+[submodule "lib/junto"]
+	path = lib/junto
+	url = git@github.com:parthatalukdar/junto.git

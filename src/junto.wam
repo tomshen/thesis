@@ -1,0 +1,27 @@
+0		comment	assoc(-1,-2) :- seed(-1,-2) {r}  #v:['N', 'Y'].
+1	assoc/2	allocate	2	['Y', 'N']
+2		initfreevar	-1	-2
+3		initfreevar	-2	-1
+4		fclear
+5		fpushstart	r	0
+6		freport
+7		pushboundvar	-1
+8		pushboundvar	-2
+9		callp	seed/2
+10		returnp
+11		comment	assoc(-1,-2) :- edge(-1,-3), assoc(-3,-2) {asoc(-1,-2)}  #v:['U', 'Y', 'V'].
+12	assoc/2	allocate	3	['V', 'Y', 'U']
+13		initfreevar	-1	-2
+14		initfreevar	-2	-1
+15		fclear
+16		fpushstart	asoc	2
+17		fpushboundvar	-1
+18		fpushboundvar	-2
+19		freport
+20		pushboundvar	-1
+21		pushfreevar	-3
+22		callp	edge/2
+23		pushboundvar	-3
+24		pushboundvar	-2
+25		callp	assoc/2
+26		returnp
