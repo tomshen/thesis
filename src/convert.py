@@ -3,11 +3,17 @@ import os.path as path
 import sys
 
 
-def create_proppr_graph(graph_edges, seeds):
+def ground_graph(graph_edges, seeds, labels):
     edges = []
     nodes = {}
     node_label = 1
-    features = []
+    features = [
+        'id(trueLoop)',
+        'id(trueLoopRestart)',
+        'fixedWeight',
+        'id(restart)',
+        'id(alphaBooster)'
+    ]
 
     for node1, node2, weight in graph_edges:
         if node1 not in nodes:
@@ -22,13 +28,14 @@ def create_proppr_graph(graph_edges, seeds):
         edges.append((n2, n1, [len(features)]))
         features.append('w({0},{1})'.format(node1, node2))
 
-    return {
-        'pos_nodes': [],
-        'neg_nodes': [],
+    return [{
+        'query_vec_keys': [1],
+        'pos_nodes': [nodes[n] for n,l in seeds.items() if l == label],
+        'neg_nodes': [nodes[n] for n,l in seeds.items() if l != label],
         'node_count': len(nodes),
         'edges': edges,
         'features': features
-    }
+    } for label in labels]
 
 
 def parse_junto_config(config_file):
@@ -75,22 +82,23 @@ def convert_junto_to_proppr(junto_config_file, program_dir):
         for node, label in seeds.items():
             graph_fp.write('\t'.join(['seed', node, label]) + '\n')
 
-    proppr_graph = create_proppr_graph(junto_edges, seeds)
+    grounded_graph = ground_graph(junto_edges, seeds, labels)
 
     # TODO: Fix
-    grounded_string = '\t'.join([
+    grounded_strings = ('\t'.join([
         name, # query
-        '', # query_vec_keys
-        ','.join(proppr_graph['pos_nodes']),
-        ','.join(proppr_graph['neg_nodes']),
-        str(proppr_graph['node_count']),
-        str(len(proppr_graph['edges'])),
-        ':'.join(proppr_graph['features']),
+        ','.join(str(i) for i in proppr_query['query_vec_keys']),
+        ','.join(str(i) for i in proppr_query['pos_nodes']),
+        ','.join(str(i) for i in proppr_query['neg_nodes']),
+        str(proppr_query['node_count']),
+        str(len(proppr_query['edges'])),
+        ':'.join(proppr_query['features']),
         '\t'.join('{0}->{1}:{2}'.format(n1, n2, ','.join(str(i) for i in f))
-            for n1, n2, f in proppr_graph['edges'])
-    ])
+            for n1, n2, f in proppr_query['edges'])
+    ]) + '\n' for proppr_query in grounded_graph)
     with open(path.join(program_dir, name + '.grounded'), 'w') as grounded_fp:
-        grounded_fp.write(grounded_string)
+        for s in grounded_strings:
+            grounded_fp.write(s)
 
 
 if __name__ == '__main__':
