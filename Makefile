@@ -6,14 +6,8 @@ all: program train
 setup:
 	git submodule init
 	git submodule update
-
-	cd lib/junto
-	bin/build update compile
-	cd ../..
-
-	cd lib/ProPPR
-	ant clean build
-	cd ../..
+	cd lib/junto && bin/build update compile
+	cd lib/ProPPR && ant clean build
 
 program:
 	mkdir -p programs/${NAME}
