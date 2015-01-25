@@ -1,0 +1,2 @@
+assoc(Y,X) :- seed(Y,X) {r}.
+assoc(Y,X) :- edge(X,Z), assoc(Y,Z) {w(Y)}.

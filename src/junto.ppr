@@ -1,3 +1,0 @@
-assoc(N,Y) :- seed(N,Y) {r}.
-assoc(U,Y) :- edge(U,V),assoc(V,Y) {asoc(U,Y)}.
-edge(U,V) :- {w(U,V)}
