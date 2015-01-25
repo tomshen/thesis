@@ -20,5 +20,5 @@ run:
 	--solutions solutions.txt
 
 evaluate:
-	python scripts/answermetrics.py --data 20NG_test.data \
+	python ${PROPPR}/scripts/answermetrics.py --data 20NG_test.data \
 	--answers solutions.txt --metric mrr --metric recall
