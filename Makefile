@@ -18,3 +18,7 @@ run:
 	--programFiles 20NG.wam:20NG.graph:20NG_seed_10perc.cfacts \
 	--queries 20NG_test.data \
 	--solutions solutions.txt
+
+evaluate:
+	python scripts/answermetrics.py --data 20NG_test.data \
+	--answers solutions.txt --metric mrr --metric recall
