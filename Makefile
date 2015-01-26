@@ -4,6 +4,7 @@ all: compile run
 
 setup:
 	tar xvf data.tar.gz
+	./process.py
 	git submodule init
 	git submodule update
 	cd lib/junto && bin/build update compile
