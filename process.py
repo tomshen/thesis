@@ -37,6 +37,34 @@ def make_queries(prop_train=0.7):
                 + '\t'.join('+assoc({0},{1})'.format(label, doc) for doc in docs)
                 + '\n')
 
+
+def make_small(prop=0.1):
+    data = defaultdict(list)
+    included_docs = set()
+    with open('data/20NG.gold') as infile:
+        for line in infile:
+            d, l, _ = line.split()
+            label = 'l' + l
+            doc = 'd' + d
+            if random.random() < prop:
+                data[label].append(doc)
+                included_docs.add(doc)
+    with open('20NG.graph') as graphfile:
+        with open('small.graph', 'w') as outfile:
+            for line in graphfile:
+                _, node1, node2 = line.split()
+                if node1 in included_docs or node2 in included_docs:
+                    outfile.write(line)
+    with open('small_seed_10perc.cfacts', 'w') as outfile:
+        for label, docs in data.items():
+            for doc in docs:
+                if random.random() < 0.1:
+                    outfile.write('seed\t{0}\t{1}\n'.format(label, doc))
+    with open('small.data', 'w') as outfile:
+        for label, docs in data.items():
+            outfile.write('assoc({0},X)\t'.format(label)
+                + '\t'.join('+assoc({0},{1})'.format(label, doc) for doc in docs)
+                + '\n')
+
 if __name__ == '__main__':
-    make_seed_cfacts()
-    make_queries()
+    make_small()
