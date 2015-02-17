@@ -38,7 +38,7 @@ def make_queries(prop_train=0.7):
                 + '\n')
 
 
-def make_small(prop=0.1):
+def make_small(prop=0.01):
     data = defaultdict(list)
     included_docs = set()
     with open('data/20NG.gold') as infile:

@@ -23,7 +23,8 @@ ground:
 
 train:
 	java -cp '${PROPPR}/conf:${PROPPR}/bin:${PROPPR}/lib/*' \
-	edu.cmu.ml.proppr.Trainer --train 20NG.grounded --params 20NG.wts
+	edu.cmu.ml.proppr.Trainer --train programs/20NG.grounded \
+	--params 20NG.wts
 
 small:
 	java -Xmx${HEAPSIZE} -cp '${PROPPR}/conf:${PROPPR}/bin:${PROPPR}/lib/*' \

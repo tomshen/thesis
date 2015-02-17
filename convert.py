@@ -1,41 +1,64 @@
 #!/usr/bin/env python
+import itertools
 import os.path as path
+import random
 import sys
 
 
+def fresh_gen():
+    label = [0]
+    def fresh():
+        label[0] += 1
+        return label[0]
+    return fresh
+
+
 def ground_graph(graph_edges, seeds, labels):
-    edges = []
-    nodes = {}
-    node_label = 1
-    features = [
-        'id(trueLoop)',
-        'id(trueLoopRestart)',
-        'fixedWeight',
-        'id(restart)',
-        'id(alphaBooster)'
-    ]
+    graphs = []
+    for label in labels:
+        print 'Grounding label {0}'.format(label),
+        edges = []
+        nodes = {}
+        fresh = fresh_gen()
 
-    for node1, node2, weight in graph_edges:
-        if node1 not in nodes:
-            nodes[node1] = node_label
-            node_label += 1
-        if node2 not in nodes:
-            nodes[node2] = node_label
-            node_label += 1
-        n1 = nodes[node1]
-        n2 = nodes[node2]
-        edges.append((n1, n2, [len(features)]))
-        edges.append((n2, n1, [len(features)]))
-        features.append('w({0},{1})'.format(node1, node2))
+        features = ['seed'] # 1-indexed
 
-    return [{
-        'query_vec_keys': [1],
-        'pos_nodes': [nodes[n] for n,l in seeds.items() if l == label],
-        'neg_nodes': [nodes[n] for n,l in seeds.items() if l != label],
-        'node_count': len(nodes),
-        'edges': edges,
-        'features': features
-    } for label in labels]
+        for node1, node2, weight in graph_edges:
+            if node1 not in nodes:
+                nodes[node1] = fresh()
+            if node2 not in nodes:
+                nodes[node2] = fresh()
+            n1 = nodes[node1]
+            n2 = nodes[node2]
+            features.append('edge({0},{1})'.format(node1, node2))
+            edges.append((n1, n2, [len(features)]))
+            edges.append((n2, n1, [len(features)]))
+
+        start_node = fresh()
+
+        for node in nodes:
+            if node in seeds and seeds[node] == label:
+                edges.append((start_node, node, [1]))
+
+        features += [
+            'id(trueLoop)',
+            'id(trueLoopRestart)',
+            'fixedWeight',
+            'id(restart)',
+            'id(alphaBooster)'
+        ]
+
+        graphs.append({
+            'query': 'assoc({0},X-1)  #v:[?].'.format(label),
+            'pos_nodes': [start_node],
+            'neg_nodes': [],
+            'node_count': len(nodes),
+            'edges': edges,
+            'features': features
+        })
+        print 'done'
+
+    return graphs
 
 
 def parse_junto_config(config_file):
@@ -59,35 +82,25 @@ def parse_junto_graph(graph_file):
     return edges
 
 
-def parse_junto(config_file):
+def parse_junto(config_file, prop=None):
     config = parse_junto_config(config_file)
     edges = parse_junto_graph(config['graph_file'])
+    if prop:
+        edges = random.sample(edges, int(len(edges) * prop))
     seeds = dict((node, label) for node, label, weight in
         parse_junto_graph(config['seed_file']))
     return edges, seeds
 
 
-def convert_junto_to_proppr(junto_config_file, program_dir):
+def convert_junto_to_proppr(junto_config_file, program_dir, prop):
     name = path.basename(junto_config_file).split('.')[0]
-    junto_edges, seeds = parse_junto(junto_config_file)
+    junto_edges, seeds = parse_junto(junto_config_file, prop)
     labels = set(seeds.itervalues())
-
-    with open(path.join(program_dir, name + '.cfacts'), 'w') as facts_fp:
-        for label in labels:
-            facts_fp.write('isLabel\t{0}\n'.format(label))
-
-    with open(path.join(program_dir, name + '.graph'), 'w') as graph_fp:
-        for node1, node2, weight in junto_edges:
-            graph_fp.write('\t'.join(['edge', node1, node2]) + '\n')
-        for node, label in seeds.items():
-            graph_fp.write('\t'.join(['seed', node, label]) + '\n')
 
     grounded_graph = ground_graph(junto_edges, seeds, labels)
 
-    # TODO: Fix
     grounded_strings = ('\t'.join([
-        name, # query
-        ','.join(str(i) for i in proppr_query['query_vec_keys']),
+        proppr_query['query'],
         ','.join(str(i) for i in proppr_query['pos_nodes']),
         ','.join(str(i) for i in proppr_query['neg_nodes']),
         str(proppr_query['node_count']),
@@ -102,4 +115,5 @@ def convert_junto_to_proppr(junto_config_file, program_dir):
 
 
 if __name__ == '__main__':
-    convert_junto_to_proppr(sys.argv[1], sys.argv[2])
+    convert_junto_to_proppr(sys.argv[1], sys.argv[2],
+        float(sys.argv[3]) if len(sys.argv) >= 4 else None)
