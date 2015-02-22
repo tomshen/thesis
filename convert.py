@@ -21,7 +21,14 @@ def ground_graph(graph_edges, seeds, labels):
         nodes = {}
         fresh = fresh_gen()
 
-        features = ['seed'] # 1-indexed
+        features = [
+            'seed',
+            'id(trueLoop)',
+            'id(trueLoopRestart)',
+            'fixedWeight',
+            'id(restart)',
+            'id(alphaBooster)'
+        ] # 1-indexed
 
         for node1, node2, weight in graph_edges:
             if node1 not in nodes:
@@ -30,23 +37,15 @@ def ground_graph(graph_edges, seeds, labels):
                 nodes[node2] = fresh()
             n1 = nodes[node1]
             n2 = nodes[node2]
-            features.append('edge({0},{1})'.format(node1, node2))
-            edges.append((n1, n2, [len(features)]))
-            edges.append((n2, n1, [len(features)]))
+            # features.append('edge({0},{1})'.format(node1, node2))
+            edges.append((n1, n2, [4]))
+            edges.append((n2, n1, [4]))
 
         start_node = fresh()
 
         for node in nodes:
             if node in seeds and seeds[node] == label:
-                edges.append((start_node, node, [1]))
-
-        features += [
-            'id(trueLoop)',
-            'id(trueLoopRestart)',
-            'fixedWeight',
-            'id(restart)',
-            'id(alphaBooster)'
-        ]
+                edges.append((start_node, nodes[node], [1]))
 
         graphs.append({
             'query': 'assoc({0},X-1)  #v:[?].'.format(label),
@@ -101,6 +100,7 @@ def convert_junto_to_proppr(junto_config_file, program_dir, prop):
 
     grounded_strings = ('\t'.join([
         proppr_query['query'],
+        ','.join(['1']), # query_vec
         ','.join(str(i) for i in proppr_query['pos_nodes']),
         ','.join(str(i) for i in proppr_query['neg_nodes']),
         str(proppr_query['node_count']),
