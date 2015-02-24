@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import itertools
+import json
 import os.path as path
 import random
 import sys
@@ -19,6 +20,7 @@ def ground_graph(graph_edges, seeds, labels):
         print 'Grounding label {0}'.format(label),
         edges = []
         nodes = {}
+        node_doc = {}
         fresh = fresh_gen()
 
         features = [
@@ -33,8 +35,10 @@ def ground_graph(graph_edges, seeds, labels):
         for node1, node2, weight in graph_edges:
             if node1 not in nodes:
                 nodes[node1] = fresh()
+                node_doc[nodes[node1]] = node1
             if node2 not in nodes:
                 nodes[node2] = fresh()
+                node_doc[nodes[node2]] = node2
             n1 = nodes[node1]
             n2 = nodes[node2]
             # features.append('edge({0},{1})'.format(node1, node2))
@@ -53,7 +57,8 @@ def ground_graph(graph_edges, seeds, labels):
             'neg_nodes': [],
             'node_count': len(nodes),
             'edges': edges,
-            'features': features
+            'features': features,
+            'node_doc': node_doc
         })
         print 'done'
 
@@ -112,6 +117,11 @@ def convert_junto_to_proppr(junto_config_file, program_dir, prop):
     with open(path.join(program_dir, name + '.grounded'), 'w') as grounded_fp:
         for s in grounded_strings:
             grounded_fp.write(s)
+
+    with open(path.join(program_dir, name + '.map'), 'w') as map_fp:
+        for proppr_query in grounded_graph:
+            map_fp.write(proppr_query['query'] + '\n')
+            map_fp.write(json.dumps(proppr_query['node_doc']) + '\n')
 
 
 if __name__ == '__main__':
