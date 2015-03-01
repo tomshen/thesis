@@ -1,4 +1,5 @@
 data
+graph
 *.data
 *.wam
 *.cfacts

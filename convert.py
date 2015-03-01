@@ -7,7 +7,7 @@ import os.path as path
 import random
 
 
-DEFAULT_OUTPUT_DIR = './programs'
+DEFAULT_GRAPH_DIR = './graph'
 logger = logging.getLogger('convert')
 logger.setLevel(logging.INFO)
 logger.addHandler(logging.StreamHandler())
@@ -58,8 +58,9 @@ def ground_graph(graph_edges, seeds, labels):
             if node in seeds and seeds[node] == label:
                 edges.append((start_node, nodes[node], [1]))
 
+        query = 'assoc({0},X-1)  #v:[?].'.format(label)
         graphs.append({
-            'query': 'assoc({0},X-1)  #v:[?].'.format(label),
+            'query': query,
             'pos_nodes': [start_node],
             'neg_nodes': [],
             'node_count': len(nodes),
@@ -100,8 +101,7 @@ def parse_junto(config_file):
     return edges, seeds
 
 
-def convert_junto_to_proppr(junto_config_file, output_dir=DEFAULT_OUTPUT_DIR,
-    sample_percent=100):
+def convert_junto_to_proppr(junto_config_file, graph_dir, sample_percent=100):
     name = path.basename(junto_config_file.name).split('.')[0]
 
     junto_edges, seeds = parse_junto(junto_config_file)
@@ -124,16 +124,15 @@ def convert_junto_to_proppr(junto_config_file, output_dir=DEFAULT_OUTPUT_DIR,
     ]) + '\n' for proppr_query in grounded_graph)
 
     logger.info('Writing grounded graphs')
-    with open(path.join(output_dir, name + '.grounded'), 'w') as grounded_fp:
+    with open(path.join(graph_dir, name + '.grounded'), 'w') as grounded_fp:
         for s in grounded_strings:
             grounded_fp.write(s)
 
     logger.info('Writing node mapping')
-    with open(path.join(output_dir, name + '.map'), 'w') as map_fp:
-        for proppr_query in grounded_graph:
-            map_fp.write(proppr_query['query'] + '\n')
-            map_fp.write(json.dumps(proppr_query['node_doc']) + '\n')
-
+    node_map = dict((proppr_query['query'], proppr_query['node_doc'])
+        for proppr_query in grounded_graph)
+    with open(path.join(graph_dir, name + '.map'), 'w') as node_map_fp:
+        json.dump(node_map, node_map_fp)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
@@ -141,12 +140,13 @@ if __name__ == '__main__':
     parser.add_argument('junto_config', type=file, help='Junto config file')
     parser.add_argument('-p', dest='sample_percent', type=int, default=100,
         help='Percent of Junto graph edges to use in the SRW graph')
-    parser.add_argument('-d', dest='output_dir', type=str,
-        default=DEFAULT_OUTPUT_DIR, help='Directory to write SRW graphs to')
+    parser.add_argument('-d', dest='graph_dir', type=str,
+        default=DEFAULT_GRAPH_DIR, help='Directory to write SRW graphs to')
     args = parser.parse_args()
 
-    if not path.exists(args.output_dir):
-        os.makedirs(args.output_dir)
+    if not path.exists(args.graph_dir):
+        os.makedirs(args.graph_dir)
 
-    convert_junto_to_proppr(args.junto_config, args.output_dir,
+    convert_junto_to_proppr(args.junto_config, args.graph_dir,
         args.sample_percent)
+    junto_config.close()
