@@ -1,23 +1,30 @@
 #!/usr/bin/env python
-import itertools
+import argparse
 import json
+import logging
+import os
 import os.path as path
 import random
-import sys
 
 
-def fresh_gen():
-    label = [0]
-    def fresh():
-        label[0] += 1
-        return label[0]
-    return fresh
+DEFAULT_OUTPUT_DIR = './programs'
+logger = logging.getLogger('convert')
+logger.setLevel(logging.INFO)
+logger.addHandler(logging.StreamHandler())
 
 
 def ground_graph(graph_edges, seeds, labels):
+    def fresh_gen():
+        label = [0]
+        def fresh():
+            label[0] += 1
+            return label[0]
+        return fresh
+
+    logger.info('Starting grounding')
     graphs = []
     for label in labels:
-        print 'Grounding label {0}'.format(label),
+        logger.info('Grounding label %s', label)
         edges = []
         nodes = {}
         node_doc = {}
@@ -60,49 +67,50 @@ def ground_graph(graph_edges, seeds, labels):
             'features': features,
             'node_doc': node_doc
         })
-        print 'done'
-
+    logger.info('Finished grounding')
     return graphs
 
 
 def parse_junto_config(config_file):
+    logger.info('Parsing Junto config file %s', config_file.name)
     config = dict()
-    with open(config_file) as config_fp:
-        for line in config_fp:
-            try:
-                key, value = line.strip().split(' = ')
-                config[key] = value
-            except:
-                continue
+    for line in config_file:
+        try:
+            key, value = line.strip().split(' = ')
+            config[key] = value
+        except:
+            continue
     return config
 
 
 def parse_junto_graph(graph_file):
+    logger.info('Parsing Junto graph file %s', graph_file.name)
     edges = []
-    with open(graph_file) as graph_fp:
-        for line in graph_fp:
-            node1, node2, weight = line.split()
-            edges.append((node1, node2, weight))
+    for line in graph_file:
+        node1, node2, weight = line.split()
+        edges.append((node1, node2, weight))
     return edges
 
 
-def parse_junto(config_file, prop=None):
+def parse_junto(config_file):
     config = parse_junto_config(config_file)
-    edges = parse_junto_graph(config['graph_file'])
-    if prop:
-        edges = random.sample(edges, int(len(edges) * prop))
+    edges = parse_junto_graph(open(config['graph_file']))
     seeds = dict((node, label) for node, label, weight in
-        parse_junto_graph(config['seed_file']))
+        parse_junto_graph(open(config['seed_file'])))
     return edges, seeds
 
 
-def convert_junto_to_proppr(junto_config_file, program_dir, prop):
-    name = path.basename(junto_config_file).split('.')[0]
-    junto_edges, seeds = parse_junto(junto_config_file, prop)
-    labels = set(seeds.itervalues())
+def convert_junto_to_proppr(junto_config_file, output_dir=DEFAULT_OUTPUT_DIR,
+    sample_percent=100):
+    name = path.basename(junto_config_file.name).split('.')[0]
 
+    junto_edges, seeds = parse_junto(junto_config_file)
+    junto_edges = random.sample(junto_edges,
+        int(len(junto_edges) * sample_percent / 100))
+    labels = set(seeds.itervalues())
     grounded_graph = ground_graph(junto_edges, seeds, labels)
 
+    logger.info('Converting grounded graphs to strings')
     grounded_strings = ('\t'.join([
         proppr_query['query'],
         ','.join(['1']), # query_vec
@@ -114,16 +122,31 @@ def convert_junto_to_proppr(junto_config_file, program_dir, prop):
         '\t'.join('{0}->{1}:{2}'.format(n1, n2, ','.join(str(i) for i in f))
             for n1, n2, f in proppr_query['edges'])
     ]) + '\n' for proppr_query in grounded_graph)
-    with open(path.join(program_dir, name + '.grounded'), 'w') as grounded_fp:
+
+    logger.info('Writing grounded graphs')
+    with open(path.join(output_dir, name + '.grounded'), 'w') as grounded_fp:
         for s in grounded_strings:
             grounded_fp.write(s)
 
-    with open(path.join(program_dir, name + '.map'), 'w') as map_fp:
+    logger.info('Writing node mapping')
+    with open(path.join(output_dir, name + '.map'), 'w') as map_fp:
         for proppr_query in grounded_graph:
             map_fp.write(proppr_query['query'] + '\n')
             map_fp.write(json.dumps(proppr_query['node_doc']) + '\n')
 
 
 if __name__ == '__main__':
-    convert_junto_to_proppr(sys.argv[1], sys.argv[2],
-        float(sys.argv[3]) if len(sys.argv) >= 4 else None)
+    parser = argparse.ArgumentParser(
+        description='Convert Junto graphs to ProPPR SRW graphs.')
+    parser.add_argument('junto_config', type=file, help='Junto config file')
+    parser.add_argument('-p', dest='sample_percent', type=int, default=100,
+        help='Percent of Junto graph edges to use in the SRW graph')
+    parser.add_argument('-d', dest='output_dir', type=str,
+        default=DEFAULT_OUTPUT_DIR, help='Directory to write SRW graphs to')
+    args = parser.parse_args()
+
+    if not path.exists(args.output_dir):
+        os.makedirs(args.output_dir)
+
+    convert_junto_to_proppr(args.junto_config, args.output_dir,
+        args.sample_percent)
