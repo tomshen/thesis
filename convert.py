@@ -22,49 +22,49 @@ def ground_graph(graph_edges, seeds, labels):
         return fresh
 
     logger.info('Starting grounding')
+
     graphs = []
+    edges = []
+    nodes = {}
+    node_doc = {}
+    fresh = fresh_gen()
+
+    features = [
+        'seed',
+        'id(trueLoop)',
+        'id(trueLoopRestart)',
+        'fixedWeight',
+        'id(restart)',
+        'id(alphaBooster)'
+    ] # 1-indexed
+
+    for node1, node2, weight in graph_edges:
+        if node1 not in nodes:
+            nodes[node1] = fresh()
+            node_doc[nodes[node1]] = node1
+        if node2 not in nodes:
+            nodes[node2] = fresh()
+            node_doc[nodes[node2]] = node2
+        n1 = nodes[node1]
+        n2 = nodes[node2]
+        edges.append((n1, n2, [4]))
+        edges.append((n2, n1, [4]))
+
+    start_node = fresh()
+
     for label in labels:
-        logger.info('Grounding label %s', label)
-        edges = []
-        nodes = {}
-        node_doc = {}
-        fresh = fresh_gen()
-
-        features = [
-            'seed',
-            'id(trueLoop)',
-            'id(trueLoopRestart)',
-            'fixedWeight',
-            'id(restart)',
-            'id(alphaBooster)'
-        ] # 1-indexed
-
-        for node1, node2, weight in graph_edges:
-            if node1 not in nodes:
-                nodes[node1] = fresh()
-                node_doc[nodes[node1]] = node1
-            if node2 not in nodes:
-                nodes[node2] = fresh()
-                node_doc[nodes[node2]] = node2
-            n1 = nodes[node1]
-            n2 = nodes[node2]
-            # features.append('edge({0},{1})'.format(node1, node2))
-            edges.append((n1, n2, [4]))
-            edges.append((n2, n1, [4]))
-
-        start_node = fresh()
-
+        seed_edges = []
         for node in nodes:
             if node in seeds and seeds[node] == label:
-                edges.append((start_node, nodes[node], [1]))
+                seed_edges.append((start_node, nodes[node], [1]))
 
-        query = 'assoc({0},X-1)  #v:[?].'.format(label)
+        query = label # 'assoc({0},X-1)  #v:[?].'.format(label)
         graphs.append({
             'query': query,
             'pos_nodes': [start_node],
             'neg_nodes': [],
             'node_count': len(nodes),
-            'edges': edges,
+            'edges': seed_edges + edges,
             'features': features,
             'node_doc': node_doc
         })
@@ -88,8 +88,11 @@ def parse_junto_graph(graph_file):
     logger.info('Parsing Junto graph file %s', graph_file.name)
     edges = []
     for line in graph_file:
-        node1, node2, weight = line.split()
-        edges.append((node1, node2, weight))
+        try:
+            node1, node2, weight = line.split()
+            edges.append((node1, node2, weight))
+        except ValueError:
+            logger.error('Error parsing edge: %s', line)
     return edges
 
 
@@ -129,8 +132,7 @@ def convert_junto_to_proppr(junto_config_file, graph_dir, sample_percent=100):
             grounded_fp.write(s)
 
     logger.info('Writing node mapping')
-    node_map = dict((proppr_query['query'], proppr_query['node_doc'])
-        for proppr_query in grounded_graph)
+    node_map = grounded_graph[0]['node_doc'] # FIXME: this is hacky
     with open(path.join(graph_dir, name + '.map'), 'w') as node_map_fp:
         json.dump(node_map, node_map_fp)
 
@@ -149,4 +151,4 @@ if __name__ == '__main__':
 
     convert_junto_to_proppr(args.junto_config, args.graph_dir,
         args.sample_percent)
-    junto_config.close()
+    args.junto_config.close()

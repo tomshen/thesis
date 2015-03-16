@@ -39,23 +39,22 @@ def run_junto(config_filename, mem_size=DEFAULT_MEM_SIZE):
             convert.parse_junto_config(config_file)['output_file'])
 
 
-def argmax(d):
-    return max(d.iteritems(), key=operator.itemgetter(1))[0]
-
-
 def convert_junto_results(output_filename):
     logger.info('Converting Junto results')
-    def parse_label_scores(s):
+    def parse_labels(s):
+        """Returns list of labels, sorted by descending score"""
         scores = s.split()
-        return {scores[i]: float(scores[i+1]) for i in xrange(0, len(scores), 2)}
+        return [label for _, label in sorted(
+            [(float(scores[i+1]), scores[i])
+            for i in xrange(0, len(scores), 2)], reverse=True)]
 
     with open_output_file(output_file) as f:
         data = csv.reader(f, delimiter='\t')
         nodes = {}
         for row in data:
             name = row[0]
-            label_scores = parse_label_scores(row[3])
-            nodes[name] = argmax(label_scores)
+            sorted_labels = parse_labels(row[3])
+            nodes[name] = sorted_labels
         return nodes
 
 
@@ -82,12 +81,13 @@ def run_srw(data_name, mem_size=DEFAULT_MEM_SIZE, threads=DEFAULT_THREADS):
 def convert_srw_results(results_filename, node_map_filename):
     logger.info('Converting SRW results')
     def load_results(results_file):
-        results = defaultdict(set)
+        results = {}
         with open(results_file) as results_fp:
             for line in results_fp:
                 try:
-                    node, query = line.strip().split('\t', 1)
-                    results[query].add(node)
+                    node, labels_string = line.strip().split('\t', 1)
+                    labels = labels_string.split('\t')
+                    results[node] = labels
                 except:
                     pass
         return results
@@ -101,31 +101,25 @@ def convert_srw_results(results_filename, node_map_filename):
     raw_results = load_results(results_filename)
     node_map = load_map(node_map_filename)
     results = {}
-    for query, nodes in raw_results.items():
-        try:
-            label = re.match(r'assoc\((.*),X-1\)', query).group(1)
-        except AttributeError:
-            continue
-        if query in node_map:
-            label_node_map = node_map[query]
-            results[label] = set(label_node_map[unicode(node)]
-                    for node in nodes)
+    for node, labels in raw_results.items():
+        if node in node_map:
+            results[node_map[node]] = labels
         else:
-            logger.error('Query not in node mapping: %s', query)
+            logger.error('Node not in node mapping: %s', node)
     return results
 
 
 def write_results(results, output_file):
-    for label, nodes in results.items():
-        for node in nodes:
-            output_file.write(node + '\t' + label + '\n')
+    for node, labels in results.items():
+        output_file.write(node + '\t' + '\t'.join(labels) + '\n')
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description='Runs Junto or SRW')
     parser.add_argument('algorithm', choices=['junto', 'srw'])
-    parser.add_argument('junto_config', type=str, help='Junto config file')
+    parser.add_argument('--config', dest='junto_config',
+            type=str, help='Junto config file')
     parser.add_argument('--data', dest='data_name',
         help='Name of data set (looks for graph in {0})'.format(
             DEFAULT_GRAPH_DIR))
@@ -143,7 +137,11 @@ if __name__ == '__main__':
     if args.algorithm == 'junto':
         results = run_junto(args.junto_config, args.mem_size)
     elif args.algorithm == 'srw':
-        results = run_srw_config(args.junto_config, args.mem_size, args.threads)
+        if args.data_name:
+            results = run_srw(args.data_name, args.mem_size, args.threads)
+        else:
+            results = run_srw_config(args.junto_config, args.mem_size,
+                                     args.threads)
 
     if args.output_file:
         write_results(results, args.output_file)
