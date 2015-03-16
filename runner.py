@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import argparse
 from collections import defaultdict
+import io
 import json
 import logging
 import operator
@@ -12,7 +13,7 @@ import subprocess
 import convert
 
 
-JUNTO_DIR = './lib/Junto'
+JUNTO_DIR = './lib/junto'
 
 PROPPR_DIR = './lib/ProPPR'
 PROPPR_CP = '{0}/conf:{0}/bin:{0}/lib/*'.format(PROPPR_DIR)
@@ -48,10 +49,10 @@ def convert_junto_results(output_filename):
             [(float(scores[i+1]), scores[i])
             for i in xrange(0, len(scores), 2)], reverse=True)]
 
-    with open_output_file(output_file) as f:
-        data = csv.reader(f, delimiter='\t')
+    with io.open(output_filename, 'r', encoding='utf-8') as f:
         nodes = {}
-        for row in data:
+        for line in f:
+            row = line.split('\t')
             name = row[0]
             sorted_labels = parse_labels(row[3])
             nodes[name] = sorted_labels
@@ -111,7 +112,8 @@ def convert_srw_results(results_filename, node_map_filename):
 
 def write_results(results, output_file):
     for node, labels in results.items():
-        output_file.write(node + '\t' + '\t'.join(labels) + '\n')
+        line = node + '\t' + '\t'.join(labels) + '\n'
+        output_file.write(unicode(line))
 
 
 if __name__ == '__main__':
@@ -125,7 +127,7 @@ if __name__ == '__main__':
             DEFAULT_GRAPH_DIR))
     parser.add_argument('--mem', dest='mem_size', default=DEFAULT_MEM_SIZE,
         help='Java memory size')
-    parser.add_argument('-o', dest='output_file', type=argparse.FileType('w'),
+    parser.add_argument('-o', dest='output_file', type=str,
         required=True)
     parser.add_argument('--threads', dest='threads', default=DEFAULT_THREADS,
         help='Number of threads for SRW')
@@ -144,5 +146,5 @@ if __name__ == '__main__':
                                      args.threads)
 
     if args.output_file:
-        write_results(results, args.output_file)
-    args.output_file.close()
+        with io.open(args.output_file, 'w', encoding='utf-8') as output_file:
+            write_results(results, output_file)
