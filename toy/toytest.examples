@@ -1,2 +1,7 @@
-predict(pos,X)	+predict(pos,pricybarbie)	+predict(pos,yellowcar)	+predict(pos,redbike2)	+predict(pos,redporshe)	-predict(pos,bigpile)	-predict(pos,hugeEmail)	-predict(pos,woetrouble)
-predict(neg,X)	-predict(neg,pricybarbie)	-predict(neg,yellowcar)	-predict(neg,redbike2)	-predict(neg,redporshe)	+predict(neg,bigpile)	+predict(neg,hugeEmail)	+predict(neg,woetrouble)
+pricybarbie	pos	1.0
+yellowcar	pos	1.0
+redbike2	pos	1.0
+redporshe	pos	1.0
+bigpile	neg	1.0
+hugeEmail	neg	1.0
+woetrouble	neg	1.0
