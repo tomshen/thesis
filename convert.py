@@ -47,8 +47,9 @@ def ground_graph(graph_edges, seeds, labels):
             node_doc[nodes[node2]] = node2
         n1 = nodes[node1]
         n2 = nodes[node2]
-        edges.append((n1, n2, [4]))
-        edges.append((n2, n1, [4]))
+        features.append('assoc({0},{1})'.format(n1, n2))
+        edges.append((n1, n2, [len(features)]))
+        edges.append((n2, n1, [len(features)]))
 
     start_node = fresh()
 
