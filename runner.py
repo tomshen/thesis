@@ -64,7 +64,7 @@ def run_srw_config(config_filename, mem_size=DEFAULT_MEM_SIZE,
     logger.info('Converting %s to SRW graph', config_filename)
     with open(config_filename) as config_file:
         convert.convert_junto_to_proppr(config_file, DEFAULT_GRAPH_DIR)
-    return run_srw(path.basename(config_filename).split('.')[0], mem_size)
+    return run_srw(path.basename(config_filename).split('.')[0], mem_size, threads)
 
 
 def run_srw(data_name, mem_size=DEFAULT_MEM_SIZE, threads=DEFAULT_THREADS):

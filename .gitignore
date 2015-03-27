@@ -4,6 +4,7 @@ graph
 *.wam
 *.cfacts
 .*solutions.*
+*.out
 
 # Created by https://www.gitignore.io
 
@@ -23,7 +24,6 @@ develop-eggs/
 dist/
 downloads/
 eggs/
-lib/
 lib64/
 parts/
 sdist/
