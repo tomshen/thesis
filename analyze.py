@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import argparse
+import itertools
 
 import convert
 
@@ -18,7 +19,7 @@ def parse_test_file(test_file):
     return dict((d, l) for d,l,_ in convert.parse_junto_graph(test_file))
 
 
-def analyze_results(results, node_labels):
+def calculate_mrr(results, node_labels):
     """ calculates MRR for each label """
     Q = len(node_labels)
     inverse_rank_sum = 0.0
@@ -28,14 +29,42 @@ def analyze_results(results, node_labels):
             if true_label in labels:
                 inverse_rank_sum += 1.0 / (labels.index(true_label) + 1)
     mrr = inverse_rank_sum / Q
-    print 'MRR', mrr
     return mrr
 
 
-def analyze_results_file(results_file, test_file):
+def calculate_precision(results, node_labels, all_labels):
+    total_predicted = {l: 0 for l in all_labels}
+    correct_predicted = {l: 0 for l in all_labels}
+    for node, labels in results.items():
+        if node in node_labels:
+            true_label = node_labels[node]
+            total_predicted[true_label] += 1
+            if true_label == labels[0]:
+                correct_predicted[true_label] += 1
+    total_precision = 0.0
+    for l in all_labels:
+        total_precision += float(correct_predicted[l]) / total_predicted[l]
+    return total_precision / len(labels)
+
+
+def calculate_recall(results, node_labels, all_labels):
+    total_true = {l: 0 for l in all_labels}
+    correct_predicted = {l: 0 for l in all_labels}
+    for node, true_label in node_labels.items():
+        total_true[true_label] += 1
+        if node in results and true_label == results[node][0]:
+            correct_predicted[true_label] += 1
+    total_recall = 0.0
+    for l in all_labels:
+        total_recall += float(correct_predicted[l]) / total_true[l]
+    return total_recall / len(labels)
+
+
+def parse_results_file(results_file, test_file):
     results = parse_results(results_file)
     doc_labels = parse_test_file(test_file)
-    analyze_results(results, doc_labels)
+    labels = set(doc_labels.itervalues())
+    return results, doc_labels, labels
 
 
 if __name__ == '__main__':
@@ -56,6 +85,9 @@ if __name__ == '__main__':
         raise parser.error(
             'Must specify either a Junto config file or a Junto test file')
 
-    analyze_results_file(args.results_file, test_file)
+    results, node_labels, labels = parse_results_file(args.results_file, test_file)
+    print 'MRR', calculate_mrr(results, node_labels)
+    print 'Precision', calculate_precision(results, node_labels, labels)
+    print 'Recall', calculate_recall(results, node_labels, labels)
     args.results_file.close()
     test_file.close()
