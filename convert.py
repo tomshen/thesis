@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import argparse
+from collections import Counter
 import json
 import logging
 import os
@@ -66,11 +67,32 @@ def ground_graph(graph_edges, seeds, labels):
             'neg_nodes': [],
             'node_count': len(nodes),
             'edges': seed_edges + edges,
-            'features': features,
+            'features': list(features),
             'node_doc': node_doc
         })
     logger.info('Finished grounding')
     return graphs
+
+
+def add_degree_feature(graph):
+    in_deg = Counter()
+    out_deg = Counter()
+    for u, v, _ in graph['edges']:
+        out_deg[u] += 1
+        in_deg[v] += 1
+    in_feat_map = {}
+    out_feat_map = {}
+    for u, d in in_deg.items():
+        graph['features'].append('inDeg({0},{1})'.format(u, d))
+        in_feat_map[u] = len(graph['features'])
+    for u, d in out_deg.items():
+        graph['features'].append('outDeg({0},{1})'.format(u, d))
+        out_feat_map[u] = len(graph['features'])
+    new_edges = []
+    for u, v, f in graph['edges']:
+        f.append(in_feat_map[v])
+        f.append(out_feat_map[u])
+    return graph
 
 
 def parse_junto_config(config_file):
