@@ -59,27 +59,18 @@ def convert_junto_results(output_filename):
         return nodes
 
 
-def run_srw_config(config_filename, mem_size=DEFAULT_MEM_SIZE,
-    threads=DEFAULT_THREADS):
-    logger.info('Converting %s to SRW graph', config_filename)
-    with open(config_filename) as config_file:
-        convert.convert_junto_to_proppr(config_file, DEFAULT_GRAPH_DIR)
-    return run_srw(path.basename(config_filename).split('.')[0], mem_size, threads)
-
-
-def run_srw(data_name, mem_size=DEFAULT_MEM_SIZE, threads=DEFAULT_THREADS):
-    srw_graph = path.join(DEFAULT_GRAPH_DIR, data_name + '.grounded')
+def run_srw(config_filename, mem_size=DEFAULT_MEM_SIZE, threads=DEFAULT_THREADS):
+    data_name = path.basename(config_filename).split('.')[0]
     srw_output = path.join(DEFAULT_GRAPH_DIR, data_name + '.out.srw')
-    node_mapping = path.join(DEFAULT_GRAPH_DIR, data_name + '.map')
-    logger.info('Running SRW on %s', srw_graph)
+    logger.info('Running SRW on %s', data_name)
     command = ['java', '-Xmx{0}'.format(mem_size), '-cp', PROPPR_CP,
-        'edu.cmu.ml.proppr.Propagator', srw_graph, srw_output, str(threads)]
+        'edu.cmu.ml.proppr.Propagator', config_filename, srw_output, str(threads)]
     logger.info('Calling: %s', ' '.join(command))
     subprocess.call(command)
-    return convert_srw_results(srw_output, node_mapping)
+    return convert_srw_results(srw_output)
 
 
-def convert_srw_results(results_filename, node_map_filename):
+def convert_srw_results(results_filename):
     logger.info('Converting SRW results')
     def load_results(results_file):
         results = {}
@@ -93,21 +84,8 @@ def convert_srw_results(results_filename, node_map_filename):
                     pass
         return results
 
-
-    def load_map(map_file):
-        with open(map_file) as map_fp:
-            return json.load(map_fp)
-
-
     raw_results = load_results(results_filename)
-    node_map = load_map(node_map_filename)
-    results = {}
-    for node, labels in raw_results.items():
-        if node in node_map:
-            results[node_map[node]] = labels
-        else:
-            logger.error('Node not in node mapping: %s', node)
-    return results
+    return raw_results
 
 
 def write_results(results, output_file):
@@ -122,9 +100,6 @@ if __name__ == '__main__':
     parser.add_argument('algorithm', choices=['junto', 'srw'])
     parser.add_argument('--config', dest='junto_config',
             type=str, help='Junto config file')
-    parser.add_argument('--data', dest='data_name',
-        help='Name of data set (looks for graph in {0})'.format(
-            DEFAULT_GRAPH_DIR))
     parser.add_argument('--mem', dest='mem_size', default=DEFAULT_MEM_SIZE,
         help='Java memory size')
     parser.add_argument('-o', dest='output_file', type=str,
@@ -139,11 +114,7 @@ if __name__ == '__main__':
     if args.algorithm == 'junto':
         results = run_junto(args.junto_config, args.mem_size)
     elif args.algorithm == 'srw':
-        if args.data_name:
-            results = run_srw(args.data_name, args.mem_size, args.threads)
-        else:
-            results = run_srw_config(args.junto_config, args.mem_size,
-                                     args.threads)
+        results = run_srw(args.junto_config, args.mem_size, args.threads)
 
     if args.output_file:
         with io.open(args.output_file, 'w', encoding='utf-8') as output_file:
