@@ -1,0 +1,4 @@
+#!/bin/sh
+
+java -Xmx40g -cp './lib/ProPPR/conf:./lib/ProPPR/bin:./lib/ProPPR/lib/*' edu.cmu.ml.proppr.Propagator $1 $2 $3
+

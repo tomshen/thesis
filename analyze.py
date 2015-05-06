@@ -27,7 +27,10 @@ def calculate_mrr(results, node_labels):
         if node in node_labels:
             true_label = node_labels[node]
             if true_label in labels:
-                inverse_rank_sum += 1.0 / (labels.index(true_label) + 1)
+                if  '__DUMMY__' in labels and labels.index('__DUMMY__') < labels.index(true_label):
+                    inverse_rank_sum += 1.0 / (labels.index(true_label))
+                else:
+                    inverse_rank_sum += 1.0 / (labels.index(true_label) + 1)
     mrr = inverse_rank_sum / Q
     return mrr
 
@@ -39,7 +42,7 @@ def calculate_precision(results, node_labels, all_labels):
         if node in node_labels:
             true_label = node_labels[node]
             total_predicted[true_label] += 1
-            if true_label == labels[0]:
+            if true_label in labels and true_label == labels[0] or (len(labels) > 1 and '__DUMMY__' == labels[0] and true_label == labels[1]):
                 correct_predicted[true_label] += 1
     total_precision = 0.0
     for l in all_labels:
@@ -52,7 +55,8 @@ def calculate_recall(results, node_labels, all_labels):
     correct_predicted = {l: 0 for l in all_labels}
     for node, true_label in node_labels.items():
         total_true[true_label] += 1
-        if node in results and true_label == results[node][0]:
+        if node in results and true_label in results[node] and (
+                true_label == results[node][0] or (len(results[node]) > 1 and '__DUMMY__' == results[node][0] and true_label == results[node][1])):
             correct_predicted[true_label] += 1
     total_recall = 0.0
     for l in all_labels:
@@ -86,8 +90,10 @@ if __name__ == '__main__':
             'Must specify either a Junto config file or a Junto test file')
 
     results, node_labels, labels = parse_results_file(args.results_file, test_file)
-    print 'MRR', calculate_mrr(results, node_labels)
-    print 'Precision', calculate_precision(results, node_labels, labels)
-    print 'Recall', calculate_recall(results, node_labels, labels)
+    print calculate_mrr(results, node_labels),
+    print '\t',
+    print calculate_precision(results, node_labels, labels),
+    print '\t',
+    print calculate_recall(results, node_labels, labels)
     args.results_file.close()
     test_file.close()
